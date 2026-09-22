@@ -9,7 +9,9 @@ import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
+import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +32,10 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
     @Resource
     private RedisIdWorker redisIdWorker;
+    //注入stringRedisTemplate和redisLock实现分布式锁
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
 
     @Override
     public Result seckillVoucher(Long voucherId) {
@@ -52,8 +58,21 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
         //获取当前用户的id
         Long userId = UserHolder.getUser().getId();
-        synchronized (userId.toString().intern()) {
+        //不再利用悲观锁了，利用分布式锁
+        //创建锁
+        SimpleRedisLock lock = new SimpleRedisLock("order:"+userId,stringRedisTemplate);
+        //获取锁
+        boolean success = lock.tryLock(1200);
+        //获取锁失败
+        if (!success){
+            return Result.fail("一个用户只允许下一单");
+        }
+        //执行业务
+        try{
             return createVocherOrder(voucherId);
+        }finally {
+            //释放锁
+            lock.unLock();
         }
     }
 
