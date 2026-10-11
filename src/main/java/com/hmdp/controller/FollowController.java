@@ -3,6 +3,7 @@ package com.hmdp.controller;
 
 import com.hmdp.dto.Result;
 import com.hmdp.service.IFollowService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -20,7 +21,7 @@ import javax.annotation.Resource;
 public class FollowController {
 
     @Resource
-    private IFollowService ifollowService;
+    private  IFollowService ifollowService;
 
     /**
      * 关注与取关
@@ -42,4 +43,16 @@ public class FollowController {
     public Result isFollowed(@PathVariable("id") Long followUserId){
         return ifollowService.isFollowed(followUserId);
     }
+
+    /**
+     * 共同关注
+     * @param followUserId
+     * @return
+     */
+    @GetMapping("/common/{id}")
+    public Result commonFollow(@PathVariable("id") Long followUserId){
+        //关注的用户他所关注的用户的集合和我关注的用户的集合的交集
+        return ifollowService.commonFollow(followUserId);
+    }
+
 }
